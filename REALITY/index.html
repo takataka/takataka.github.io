@@ -1,0 +1,130 @@
+<html>
+
+    <head>
+        <title>TAKA REALITY</title>
+        <script src="include/base64.js"></script>
+        <script src="include/util.js"></script>
+        <script src="include/websock.js"></script>
+        <script src="include/webutil.js"></script> 
+        <script src="include/keysym.js"></script> 
+        <script src="include/VT100.js"></script> 
+        <script src="include/wstelnet.js"></script> 
+        <link href='http://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+        <link href='http://fonts.googleapis.com/css?family=VT323' rel='stylesheet' type='text/css'>
+        
+        <!-- Uncomment to activate firebug lite -->
+        <!--
+        <script type='text/javascript' 
+            src='http://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script>
+        -->
+        
+          <style type="text/css">
+            body { margin: 0; padding: 0; text-align: center; background: url(loop3.gif); background-size: 100%; width:100%; height: 100%; }
+            pre { font-family: 'VT323', sans-serif; margin: 0; padding: 0; width: 560x; height: 384px; }
+            #title { position: absolute; top: -220px; left: -60px; width: 680px; height: 280px; background-image: url(taka.gif); background-size:100%; background-repeat: no-repeat; color: transparent; margin: 0; padding: 0; }
+            #container { position: absolute; top: 60%; left: 50%; margin-top: -222px; margin-left: -300px; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 2px; }
+            #carat, #prompt { font-size: 20px; color: #2FFF12; font-family: 'VT323', sans-serif; }
+            #carat { position: absolute; left: 20px; bottom: 20px; }
+            #prompt { background: transparent; margin: 0; padding: 0; padding-left: 16px; border: none; width: 100%; }
+            :focus { outline: none; }
+            pre span { background: transparent !important; }
+            b { font-weight: normal !important; }
+            
+            body.kaz { background-image: url(loopkaz.gif); }
+            body.kaz #title { background-image: url(taka-alt.gif); }
+            body.kaz #container { background: transparent; }
+            body.kaz pre span, body.kaz #prompt, body.kaz #carat { color: white !important; text-shadow: red 1px 1px 1px; }
+          </style>
+
+    </head>
+
+    <body>
+      
+        <div id="container">
+          <h1 id="title">TAKA</h1>
+          <pre id="terminal"></pre>
+          <span id="carat">&gt;</span>
+          <input type="text" id="prompt" />
+        </div>
+
+        <script>
+            var telnet;
+
+            Util.init_logging('info');
+            
+            function connect() {
+                // telnet.connect($D('host').value,
+                               // $D('port').value,
+                               // $D('encrypt').checked);
+                // $D('connectButton').disabled = true;
+                // $D('connectButton').value = "Connecting";
+            }
+
+            function disconnect() {
+                // $D('connectButton').disabled = true;
+                // $D('connectButton').value = "Disconnecting";
+                // telnet.disconnect();
+            }
+
+            function connected() {
+                // $D('connectButton').disabled = false;
+                // $D('connectButton').value = "Disconnect";
+                // $D('connectButton').onclick = disconnect;
+                $D('prompt').disabled = false;
+            }
+
+            function disconnected() {
+                // $D('connectButton').disabled = false;
+                // $D('connectButton').value = "Connect";
+                // $D('connectButton').onclick = connect;
+                $D('prompt').disabled = true;
+            }
+            
+            function send() {
+              console.log($D('prompt').value);
+              telnet.send($D('prompt').value);
+              $D('prompt').value = "";
+            }
+            
+            var kzre, otre;
+            function checkKazbah(stream) {
+              if (!kzre) {
+                var rmseq = [27,91,49,109,27,91,51,54,109] // ^[1m^[36m
+                var kzseq = "Kazbah".split('').map(function(chr){ return chr.charCodeAt(0); });
+                var kzpat = Base64.encode(rmseq.concat(kzseq));
+                var otpat = Base64.encode(rmseq) + "[^" + 'K'.charCodeAt(0) + "]";
+                kzre = new RegExp(kzpat);
+                otre = new RegExp(otpat);
+                Util.Info("Matching pattern: " + kzre);
+                Util.Info("Non-matching pattern: " + otre);
+              }
+              var str = Base64.encode(stream);
+              Util.Info("Matching " + str);
+              if (kzre.test(str)) {
+                document.body.className = 'kaz';
+              }
+              else if (otre.test(str)) {
+                document.body.className = '';
+              }
+              
+            }
+
+            window.onload = function() {
+                console.log("onload");
+                var url = document.location.href;
+                
+                telnet = Telnet('terminal', connected, disconnected);
+                telnet.connect("doormouse.org", 2323, false);
+                telnet.munge(checkKazbah);
+                
+                $D('prompt').focus();
+                $D('prompt').onblur = function(e) {
+                  setTimeout(function(){ $D('prompt').focus(); }, 0); }
+                Util.addEvent($D('prompt'), 'keydown', function(e){
+                  if (e.keyCode == 13) send(); });
+            }
+        </script>
+
+    </body>
+
+</html>
